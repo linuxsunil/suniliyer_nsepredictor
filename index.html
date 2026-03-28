@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NSE 50 Stock Analyser</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#fff;--bg2:#f5f5f3;--bg3:#eeedea;
+  --text:#1a1a1a;--text2:#5f5e5a;--text3:#888780;
+  --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.2);
+  --blue:#185FA5;--blue-lt:#E6F1FB;--blue-dk:#0C447C;
+  --green:#3B6D11;--green-lt:#EAF3DE;--green-dk:#27500A;
+  --red:#A32D2D;--red-lt:#FCEBEB;--red-dk:#791F1F;
+  --amber:#854F0B;--amber-lt:#FAEEDA;--amber-dk:#633806;
+  --r:8px;--rl:12px;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;background:var(--bg3);color:var(--text);min-height:100vh}
+header{background:var(--bg);border-bottom:0.5px solid var(--border2);padding:12px 24px;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:12px}
+header h1{font-size:15px;font-weight:500}
+.badge{font-size:11px;color:var(--text3);background:var(--bg2);padding:3px 10px;border-radius:20px;border:0.5px solid var(--border)}
+.model-badge{font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--border);display:none}
+.model-flash{background:var(--blue-lt);color:var(--blue-dk);border-color:rgba(24,95,165,0.3)}
+.model-pro{background:#EEEDFE;color:#3C3489;border-color:rgba(83,74,183,0.3)}
+.container{max-width:1100px;margin:0 auto;padding:20px}
+.controls{background:var(--bg);border-radius:var(--rl);border:0.5px solid var(--border);padding:16px 20px;margin-bottom:14px;display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:11px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.4px}
+select{height:36px;padding:0 10px;border-radius:var(--r);border:0.5px solid var(--border2);background:var(--bg);color:var(--text);font-size:13px;cursor:pointer;min-width:175px}
+select:focus{outline:none;border-color:var(--blue)}
+.btn{height:36px;padding:0 22px;border-radius:var(--r);border:none;font-size:13px;font-weight:500;cursor:pointer;background:var(--blue);color:var(--blue-lt);transition:background 0.15s}
+.btn:hover{background:var(--blue-dk)}
+.btn:disabled{opacity:0.5;cursor:not-allowed}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}
+.metric{background:var(--bg);border-radius:var(--r);border:0.5px solid var(--border);padding:12px 16px}
+.mlabel{font-size:11px;color:var(--text3);margin-bottom:4px}
+.mvalue{font-size:20px;font-weight:500;line-height:1.2}
+.msub{font-size:11px;color:var(--text3);margin-top:3px}
+.layout{display:grid;grid-template-columns:1fr 308px;gap:14px}
+.card{background:var(--bg);border-radius:var(--rl);border:0.5px solid var(--border);padding:16px 20px;margin-bottom:12px}
+.ctitle{font-size:11px;color:var(--text2);font-weight:500;text-transform:uppercase;letter-spacing:0.4px;margin-bottom:12px}
+.legend{display:flex;gap:14px;font-size:11px;color:var(--text2);margin-bottom:10px;flex-wrap:wrap}
+.legend span{display:flex;align-items:center;gap:5px}
+.ld{width:14px;height:3px;border-radius:2px;display:inline-block}
+.sig-card{border-radius:var(--rl);border:0.5px solid var(--border);padding:16px 20px;margin-bottom:12px}
+.sig-word{font-size:32px;font-weight:500;margin:4px 0 2px;letter-spacing:-0.5px}
+.sig-conf{font-size:13px;margin-bottom:8px}
+.track{height:6px;background:var(--bg3);border-radius:3px;margin-bottom:14px;overflow:hidden}
+.fill{height:6px;border-radius:3px;transition:width 0.6s ease}
+.pills{display:flex;gap:6px;flex-wrap:wrap}
+.pill{font-size:11px;padding:3px 10px;border-radius:20px;border:0.5px solid var(--border2)}
+.buy{background:var(--green-lt);color:var(--green-dk)}
+.sell{background:var(--red-lt);color:var(--red-dk)}
+.hold{background:var(--amber-lt);color:var(--amber-dk)}
+.irow{display:flex;justify-content:space-between;padding:5px 0;border-bottom:0.5px solid var(--border);font-size:12px}
+.irow:last-child{border-bottom:none}
+.ikey{color:var(--text2)}
+.ival{font-weight:500}
+.ai-wrap{background:var(--bg2);border-radius:var(--r);padding:14px;font-size:13px;line-height:1.7;color:var(--text);min-height:80px;max-height:500px;overflow-y:auto;}
+.ai-meta{font-size:11px;color:var(--text3);margin-top:8px;display:flex;align-items:center;gap:6px}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--text3)}
+.status{text-align:center;padding:40px;color:var(--text3);font-size:13px}
+.err{background:var(--red-lt);color:var(--red-dk);border-radius:var(--r);padding:10px 14px;font-size:13px;margin-bottom:12px;display:none}
+.disc{font-size:11px;color:var(--text3);text-align:center;padding:14px 0 4px;line-height:1.6}
+@media(max-width:800px){.layout{grid-template-columns:1fr}.metrics{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header>
+  <div class="header-left">
+    <h1>NSE 50 Stock Analyser</h1>
+    <span class="badge">Powered by Gemini AI</span>
+    <span class="model-badge" id="modelBadge"></span>
+  </div>
+</header>
+
+<div class="container">
+  <div class="controls">
+    <div class="field">
+      <label>Stock</label>
+      <select id="stockSel">
+        <option value="RELIANCE.NS">Reliance Industries</option>
+        <option value="TCS.NS">TCS</option>
+        <option value="HDFCBANK.NS">HDFC Bank</option>
+        <option value="INFY.NS">Infosys</option>
+        <option value="ICICIBANK.NS">ICICI Bank</option>
+        <option value="HINDUNILVR.NS">Hindustan Unilever</option>
+        <option value="ITC.NS">ITC</option>
+        <option value="SBIN.NS">State Bank of India</option>
+        <option value="BAJFINANCE.NS">Bajaj Finance</option>
+        <option value="BHARTIARTL.NS">Bharti Airtel</option>
+        <option value="KOTAKBANK.NS">Kotak Mahindra Bank</option>
+        <option value="LT.NS">Larsen &amp; Toubro</option>
+        <option value="HCLTECH.NS">HCL Technologies</option>
+        <option value="ASIANPAINT.NS">Asian Paints</option>
+        <option value="AXISBANK.NS">Axis Bank</option>
+        <option value="MARUTI.NS">Maruti Suzuki</option>
+        <option value="SUNPHARMA.NS">Sun Pharma</option>
+        <option value="TITAN.NS">Titan</option>
+        <option value="WIPRO.NS">Wipro</option>
+        <option value="ULTRACEMCO.NS">UltraTech Cement</option>
+        <option value="ONGC.NS">ONGC</option>
+        <option value="NTPC.NS">NTPC</option>
+        <option value="POWERGRID.NS">Power Grid</option>
+        <option value="M&M.NS">Mahindra &amp; Mahindra</option>
+        <option value="TATASTEEL.NS">Tata Steel</option>
+        <option value="ADANIENT.NS">Adani Enterprises</option>
+        <option value="JSWSTEEL.NS">JSW Steel</option>
+        <option value="BAJAJFINSV.NS">Bajaj Finserv</option>
+        <option value="DIVISLAB.NS">Divi's Laboratories</option>
+        <option value="DRREDDY.NS">Dr Reddy's</option>
+        <option value="CIPLA.NS">Cipla</option>
+        <option value="EICHERMOT.NS">Eicher Motors</option>
+        <option value="GRASIM.NS">Grasim Industries</option>
+        <option value="HEROMOTOCO.NS">Hero MotoCorp</option>
+        <option value="HINDALCO.NS">Hindalco</option>
+        <option value="INDUSINDBK.NS">IndusInd Bank</option>
+        <option value="NESTLEIND.NS">Nestle India</option>
+        <option value="SBILIFE.NS">SBI Life Insurance</option>
+        <option value="TECHM.NS">Tech Mahindra</option>
+        <option value="TATAMOTORS.NS">Tata Motors</option>
+        <option value="COALINDIA.NS">Coal India</option>
+        <option value="APOLLOHOSP.NS">Apollo Hospitals</option>
+        <option value="BPCL.NS">BPCL</option>
+        <option value="BRITANNIA.NS">Britannia</option>
+        <option value="HDFCLIFE.NS">HDFC Life</option>
+        <option value="TATACONSUM.NS">Tata Consumer</option>
+        <option value="UPL.NS">UPL</option>
+        <option value="SHREECEM.NS">Shree Cement</option>
+        <option value="BAJAJ-AUTO.NS">Bajaj Auto</option>
+        <option value="ADANIPORTS.NS">Adani Ports</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Theory</label>
+      <select id="theorySel">
+        <option value="all">All theories combined</option>
+        <option value="dow">Dow Theory</option>
+        <option value="sma">Moving Averages (SMA/EMA)</option>
+        <option value="rsi">RSI &amp; Momentum</option>
+        <option value="elliott">Elliott Wave</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Period</label>
+      <select id="periodSel">
+        <option value="1y">1 year</option>
+        <option value="2y">2 years</option>
+        <option value="5y">5 years</option>
+        <option value="max">20 years (max)</option>
+      </select>
+    </div>
+    <button class="btn" id="btn" onclick="analyse()">Analyse</button>
+  </div>
+
+  <div class="err" id="err"></div>
+
+  <div class="metrics" id="metricsRow" style="display:none">
+    <div class="metric"><div class="mlabel">Current price</div><div class="mvalue" id="mp">—</div><div class="msub" id="mc">—</div></div>
+    <div class="metric"><div class="mlabel">52-week high</div><div class="mvalue" id="mh">—</div><div class="msub">yearly peak</div></div>
+    <div class="metric"><div class="mlabel">52-week low</div><div class="mvalue" id="ml">—</div><div class="msub">yearly trough</div></div>
+    <div class="metric"><div class="mlabel">RSI (14)</div><div class="mvalue" id="mr">—</div><div class="msub" id="mrl">—</div></div>
+  </div>
+
+  <div class="layout" id="layout" style="display:none">
+    <div>
+      <div class="card">
+        <div class="ctitle" id="chartTitle">Price chart</div>
+        <div class="legend">
+          <span><span class="ld" style="background:#378ADD"></span>Price</span>
+          <span><span class="ld" style="background:#E24B4A"></span>SMA 50</span>
+          <span><span class="ld" style="background:#639922"></span>SMA 200</span>
+          <span><span class="ld" style="background:#EF9F27"></span>EMA 20</span>
+        </div>
+        <div style="position:relative;width:100%;height:300px"><canvas id="pc"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">RSI 14-day · &lt;30 oversold · &gt;70 overbought</div>
+        <div style="position:relative;width:100%;height:130px"><canvas id="rc"></canvas></div>
+      </div>
+    </div>
+    <div>
+      <div class="sig-card" id="sigCard">
+        <div class="ctitle">Signal</div>
+        <div class="sig-word" id="sw">—</div>
+        <div class="sig-conf" id="sc2">—</div>
+        <div class="track"><div class="fill" id="cf" style="width:0"></div></div>
+        <div class="pills" id="pills"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Key indicators</div>
+        <div id="irows"></div>
+      </div>
+      <div class="card">
+        <div class="ctitle">Gemini analysis</div>
+        <div class="ai-wrap" id="ai">Select a stock and click Analyse.</div>
+        <div class="ai-meta" id="aiMeta" style="display:none">
+          <span class="dot"></span><span id="aiModel">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="status" id="status">Select a stock and click Analyse to begin.</div>
+  <p class="disc">For educational purposes only · Not financial advice · Past performance does not guarantee future results</p>
+</div>
+
+<script>
+const BASE = window.location.origin;
+let PC = null, RC = null;
+const fmt=(n,dec=2)=>'₹'+Number(n).toLocaleString('en-IN',{minimumFractionDigits:dec,maximumFractionDigits:dec});
+const pct=n=>(n>=0?'+':'')+n.toFixed(2)+'%';
+function sma(a,n){return a.map((_,i)=>i<n-1?null:a.slice(i-n+1,i+1).reduce((s,v)=>s+v,0)/n);}
+function ema(a,n){const k=2/(n+1);let e=null;return a.map(v=>{e=e===null?v:v*k+e*(1-k);return e;});}
+function rsi(c,p=14){
+  const o=new Array(c.length).fill(null);let ag=0,al=0;
+  for(let i=1;i<=p;i++){const d=c[i]-c[i-1];d>=0?ag+=d:al-=d;}
+  ag/=p;al/=p;o[p]=al===0?100:100-100/(1+ag/al);
+  for(let i=p+1;i<c.length;i++){const d=c[i]-c[i-1],g=d>0?d:0,l=d<0?-d:0;ag=(ag*(p-1)+g)/p;al=(al*(p-1)+l)/p;o[i]=al===0?100:100-100/(1+ag/al);}
+  return o;
+}
+function dowSig(c,s50,s200){
+  const i=c.length-1;
+  if(s50[i]>s200[i]&&s50[i-5]<=s200[i-5]) return{sig:'BUY',conf:78,reason:'Golden cross: SMA50 crossed above SMA200'};
+  if(s50[i]<s200[i]&&s50[i-5]>=s200[i-5]) return{sig:'SELL',conf:74,reason:'Death cross: SMA50 crossed below SMA200'};
+  if(c[i]>s200[i]&&c[i]>s50[i]) return{sig:'BUY',conf:62,reason:'Price above both MAs — uptrend intact'};
+  if(c[i]<s200[i]&&c[i]<s50[i]) return{sig:'SELL',conf:60,reason:'Price below both MAs — downtrend intact'};
+  return{sig:'HOLD',conf:50,reason:'No clear cross — market consolidating'};
+}
+function rsiSig(r){
+  const v=r.filter(x=>x!=null),rv=v[v.length-1],r5=v[v.length-6];
+  if(rv<30) return{sig:'BUY',conf:80,reason:`RSI ${rv.toFixed(1)} — oversold`};
+  if(rv>70) return{sig:'SELL',conf:76,reason:`RSI ${rv.toFixed(1)} — overbought`};
+  if(rv<45&&rv>r5) return{sig:'BUY',conf:58,reason:`RSI ${rv.toFixed(1)} recovering from lows`};
+  if(rv>55&&rv<r5) return{sig:'SELL',conf:55,reason:`RSI ${rv.toFixed(1)} declining from highs`};
+  return{sig:'HOLD',conf:50,reason:`RSI ${rv.toFixed(1)} — neutral zone`};
+}
+function smaSig(c,s50,e20,s200){
+  const i=c.length-1,p=c[i];
+  if(p>e20[i]&&e20[i]>s50[i]&&s50[i]>s200[i]) return{sig:'BUY',conf:82,reason:'Full bullish stack: price > EMA20 > SMA50 > SMA200'};
+  if(p<e20[i]&&e20[i]<s50[i]&&s50[i]<s200[i]) return{sig:'SELL',conf:79,reason:'Full bearish stack: price < EMA20 < SMA50 < SMA200'};
+  if(p>s50[i]&&p>s200[i]) return{sig:'BUY',conf:64,reason:'Price above both key MAs'};
+  if(p<s50[i]&&p<s200[i]) return{sig:'SELL',conf:61,reason:'Price below both key MAs'};
+  return{sig:'HOLD',conf:50,reason:'Mixed MA signals'};
+}
+function elliottSig(c){
+  const rec=c.slice(-60),h=Math.max(...rec),l=Math.min(...rec),pos=(c[c.length-1]-l)/(h-l);
+  if(pos<0.25) return{sig:'BUY',conf:66,reason:'Near wave trough — possible impulse wave start'};
+  if(pos>0.75) return{sig:'SELL',conf:63,reason:'Near wave peak — corrective wave likely'};
+  return{sig:'HOLD',conf:50,reason:'Mid-range — Elliott structure unclear'};
+}
+function combine(sigs){
+  const sc={BUY:0,SELL:0,HOLD:0};
+  sigs.forEach(s=>sc[s.sig]+=s.conf);
+  const best=Object.entries(sc).sort((a,b)=>b[1]-a[1])[0];
+  return{sig:best[0],conf:Math.round(best[1]/sigs.length)};
+}
+function drawCharts(dates,closes,s50a,s200a,e20a,rsia){
+  const stride=Math.max(1,Math.floor(dates.length/100));
+  const idx=dates.reduce((a,_,i)=>i%stride===0?[...a,i]:a,[]);
+  const f=a=>idx.map(i=>a[i]!=null?+a[i].toFixed(2):null);
+  const lbls=idx.map(i=>dates[i]);
+  if(PC){PC.destroy();PC=null;} if(RC){RC.destroy();RC=null;}
+  PC=new Chart(document.getElementById('pc'),{type:'line',data:{labels:lbls,datasets:[
+    {data:f(closes),borderColor:'#378ADD',borderWidth:1.5,pointRadius:0,fill:false,tension:0.15},
+    {data:f(s50a),borderColor:'#E24B4A',borderWidth:1,pointRadius:0,fill:false,borderDash:[4,4]},
+    {data:f(s200a),borderColor:'#639922',borderWidth:1,pointRadius:0,fill:false,borderDash:[6,4]},
+    {data:f(e20a),borderColor:'#EF9F27',borderWidth:1,pointRadius:0,fill:false,borderDash:[2,3]}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:c=>'₹'+c.parsed.y?.toLocaleString('en-IN')}}},scales:{x:{ticks:{maxTicksLimit:8,font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}},y:{ticks:{font:{size:10},callback:v=>'₹'+v.toLocaleString('en-IN')},grid:{color:'rgba(128,128,128,0.07)'}}}}});
+  RC=new Chart(document.getElementById('rc'),{type:'line',data:{labels:lbls,datasets:[
+    {data:idx.map(i=>rsia[i]!=null?+rsia[i].toFixed(1):null),borderColor:'#7F77DD',borderWidth:1.5,pointRadius:0,fill:false},
+    {data:lbls.map(()=>70),borderColor:'#E24B4A',borderWidth:0.8,pointRadius:0,fill:false,borderDash:[4,4]},
+    {data:lbls.map(()=>30),borderColor:'#639922',borderWidth:0.8,pointRadius:0,fill:false,borderDash:[4,4]}
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{maxTicksLimit:6,font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}},y:{min:0,max:100,ticks:{stepSize:25,font:{size:10}},grid:{color:'rgba(128,128,128,0.07)'}}}}});
+}
+function showErr(msg){const e=document.getElementById('err');e.textContent=msg;e.style.display=msg?'block':'none';}
+async function analyse(){
+  const ticker=document.getElementById('stockSel').value;
+  const name=document.getElementById('stockSel').options[document.getElementById('stockSel').selectedIndex].text.split(' —')[0];
+  const theory=document.getElementById('theorySel').value;
+  const period=document.getElementById('periodSel').value;
+  const rangeMap={'1y':'1y','2y':'2y','5y':'5y','max':'20y'};
+  showErr('');
+  document.getElementById('status').textContent='Fetching market data...';
+  document.getElementById('status').style.display='block';
+  document.getElementById('metricsRow').style.display='none';
+  document.getElementById('layout').style.display='none';
+  document.getElementById('btn').disabled=true;
+  try {
+    const r=await fetch(`${BASE}/api/stock?ticker=${encodeURIComponent(ticker)}&range=${rangeMap[period]||'1y'}`);
+    if(!r.ok) throw new Error('Failed to fetch stock data');
+    const j=await r.json();
+    if(j.chart?.error) throw new Error(j.chart.error.description||'Invalid ticker');
+    const res=j.chart.result[0];
+    const ts=res.timestamp,q=res.indicators.quote[0];
+    const vi=ts.reduce((a,_,i)=>q.close[i]!=null?[...a,i]:a,[]);
+    const dates=vi.map(i=>new Date(ts[i]*1000).toISOString().slice(0,10));
+    const closes=vi.map(i=>q.close[i]);
+    const s50=sma(closes,50),s200=sma(closes,200),e20=ema(closes,20),rsiA=rsi(closes);
+    const last=closes.length-1,price=closes[last],prev=closes[last-1];
+    const chg=price-prev,chgP=(chg/prev)*100;
+    const h52=Math.max(...closes.slice(-252)),l52=Math.min(...closes.slice(-252));
+    const rsiV=rsiA.filter(x=>x!=null).slice(-1)[0];
+    const fromHigh=pct((price/h52-1)*100);
+    document.getElementById('mp').textContent=fmt(price);
+    const mc=document.getElementById('mc');
+    mc.textContent=(chg>=0?'+':'')+chg.toFixed(2)+' ('+chgP.toFixed(2)+'%)';
+    mc.style.color=chg>=0?'#3B6D11':'#A32D2D';
+    document.getElementById('mh').textContent=fmt(h52,0);
+    document.getElementById('ml').textContent=fmt(l52,0);
+    document.getElementById('mr').textContent=rsiV.toFixed(1);
+    document.getElementById('mrl').textContent=rsiV<30?'Oversold':rsiV>70?'Overbought':'Neutral';
+    document.getElementById('chartTitle').textContent=name+' · price history';
+    drawCharts(dates,closes,s50,s200,e20,rsiA);
+    const indicators={
+      price:price.toFixed(2),
+      change:(chg>=0?'+':'')+chg.toFixed(2)+' ('+chgP.toFixed(2)+'%)',
+      rsi:rsiV.toFixed(1),
+      ema20:e20[last]?.toFixed(2)||'N/A',
+      sma50:s50[last]?.toFixed(2)||'N/A',
+      sma200:s200[last]?.toFixed(2)||'N/A',
+      high52:h52.toFixed(2),
+      low52:l52.toFixed(2),
+      fromHigh
+    };
+    const sigs=[];
+    if(theory==='all'||theory==='dow') sigs.push({name:'Dow Theory',...dowSig(closes,s50,s200)});
+    if(theory==='all'||theory==='rsi') sigs.push({name:'RSI & Momentum',...rsiSig(rsiA)});
+    if(theory==='all'||theory==='sma') sigs.push({name:'Moving Averages',...smaSig(closes,s50,e20,s200)});
+    if(theory==='all'||theory==='elliott') sigs.push({name:'Elliott Wave',...elliottSig(closes)});
+    const combined=sigs.length>1?combine(sigs):sigs[0];
+    const SC={BUY:{bg:'#EAF3DE',c:'#27500A',bar:'#639922'},SELL:{bg:'#FCEBEB',c:'#791F1F',bar:'#E24B4A'},HOLD:{bg:'#FAEEDA',c:'#633806',bar:'#EF9F27'}};
+    const sc=SC[combined.sig];
+    document.getElementById('sigCard').style.background=sc.bg;
+    const sw=document.getElementById('sw');sw.textContent=combined.sig;sw.style.color=sc.c;
+    const sc2=document.getElementById('sc2');sc2.textContent=combined.conf+'% confidence';sc2.style.color=sc.c;
+    document.getElementById('cf').style.width=combined.conf+'%';
+    document.getElementById('cf').style.background=sc.bar;
+    document.getElementById('pills').innerHTML=sigs.map(s=>`<span class="pill ${s.sig.toLowerCase()}" title="${s.reason}">${s.name}: ${s.sig}</span>`).join('');
+    document.getElementById('irows').innerHTML=[
+      ['EMA 20',fmt(indicators.ema20)],['SMA 50',fmt(indicators.sma50)],
+      ['SMA 200',fmt(indicators.sma200)],['RSI (14)',rsiV.toFixed(1)],
+      ['52W High',fmt(h52,0)],['52W Low',fmt(l52,0)],['From 52W High',fromHigh],
+    ].map(([k,v])=>`<div class="irow"><span class="ikey">${k}</span><span class="ival">${v}</span></div>`).join('');
+    document.getElementById('status').style.display='none';
+    document.getElementById('metricsRow').style.display='grid';
+    document.getElementById('layout').style.display='grid';
+    document.getElementById('ai').textContent='Gemini is analysing...';
+    document.getElementById('aiMeta').style.display='none';
+    const ar=await fetch(`${BASE}/api/analyse`,{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({stockName:name,theory,period,signals:sigs,indicators})
+    });
+    const aj=await ar.json();
+    if(aj.error) throw new Error('Gemini: '+aj.error);
+    document.getElementById('ai').textContent=aj.analysis;
+    const mb=document.getElementById('modelBadge');
+    const isFlash=aj.model?.includes('flash');
+    mb.textContent='Gemini 2.5 Flash';
+    mb.className='model-badge model-flash';
+    mb.style.display='inline-block';
+    document.getElementById('aiModel').textContent='Analysed with Gemini 2.5 Flash';
+    document.getElementById('aiMeta').style.display='flex';
+  } catch(e){
+    showErr(e.message);
+    document.getElementById('status').textContent='Analysis failed — check the error above.';
+  } finally {
+    document.getElementById('btn').disabled=false;
+  }
+}
+</script>
+</body>
+</html>
